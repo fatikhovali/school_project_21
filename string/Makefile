@@ -1,0 +1,44 @@
+CC+FLAGS = gcc -std=c11 -Wall -Wextra -Werror
+GCOVFLAGS = -L. --coverage -ls21_string
+OS = $(shell uname)
+ifeq ($(OS), Linux)
+	CHECK_FLAGS = -lcheck -pthread -lrt -lm -lsubunit
+else
+	CHECK_FLAGS = -D_THREAD_SAFE -I/opt/homebrew/Cellar/check/0.15.2/include -L/opt/homebrew/Cellar/check/0.15.2/lib -lcheck
+endif
+
+TEST_COMPILE = gcc-12 -std=c11 -Wall -Wextra -Werror 1.c s21_string.a  -D_THREAD_SAFE -I/opt/homebrew/Cellar/check/0.15.2/include -L/opt/homebrew/Cellar/check/0.15.2/lib  -lcheck
+
+all: s21_string.a
+
+clean:
+	rm -rf *.o *.g* *.info *.out report *.a *.dSYM
+
+rebuild: clean all
+
+test: s21_string.a
+	$(TEST_COMPILE)
+	./a.out
+
+gcov_report: s21_string.a test
+	rm -f *.g*
+	$(CC+FLAGS) s21*.c 1.c s21_string.a $(CHECK_FLAGS) $(GCOVFLAGS)
+	./a.out
+	lcov -t a.out -o rep.info -c -d .
+	genhtml -o report rep.info
+	open ./report/index.html
+	rm -rf *.gcda *.gcno *.info
+
+s21_string.a: s21_string.o
+	ar rcs libs21_string.a *.o
+	rm -rf *.o
+	ranlib libs21_string.a
+	cp libs21_string.a s21_string.a
+	cp libs21_string.a ls21_string.a
+
+s21_string.o:
+	$(CC+FLAGS) -c s21*.c
+
+check:
+	clang-format -n *.c *.h
+	make test
